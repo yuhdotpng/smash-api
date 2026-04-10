@@ -1,1 +1,1 @@
-# smash-api
+# Smash API
