@@ -35,7 +35,7 @@ const User = db.define('User',{
         type: DataTypes.TEXT,
         defaultValue: 'user',
         validate: {
-            isIN: ['user', 'player', 'tournament organizer', 'admin']
+            isIN: ['user', 'player', 'TO', 'admin']
         }
     }
 });
@@ -64,7 +64,7 @@ const Player = db.define('Player',{
         allowNull: false
     },
     season_ranking: {
-        type: DataTypes.ARRAY(DataTypes.INTEGER),
+        type: DataTypes.INTEGER,
         allowNull: false
     },
     status: {
@@ -108,14 +108,13 @@ const Tournament = db.define('Tournament', {
     format: {
         type: DataTypes.TEXT,
         validate: {
-            isIN: ['singles', 'doubles', 'round robin', 'pools', 'swiss']
+            isIN: ['single', 'double', 'round robin', 'pools', 'swiss']
         },
         allowNull: false
     },
     accept_reg: {
         type: DataTypes.BOOLEAN,
-        defaultValue: true,
-        allowNull: false
+        defaultValue: true
     }
 });
 //Defining player and user table relationship
@@ -129,7 +128,7 @@ Player.hasMany(Tournament, {foreignKey: 'playerId'});
 Tournament.belongsTo(Player, {foreignKey:'playerId'});
 
 //Defining tournament and user relationship
-if (User.role === 'tournament organizer') {
+if (User.role === 'TO') {
     User.hasMany(Tournament, {foreignKey: 'userId'});
     Tournament.belongsTo(User, {foreignKey: 'userId'});
 };
