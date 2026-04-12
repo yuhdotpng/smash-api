@@ -1,5 +1,5 @@
 const bcrypt = require('bcryptjs');
-const { db, User, Player, Tournament } = require('./setup');
+const { db, User, Player, Tournament } = require('./models');
 
 
 async function seedDatabase() {
