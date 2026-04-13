@@ -1,7 +1,7 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-import('./middleware');
+//const jwt = require('jsonwebtoken');
+
 const { db, User, Player, Tournament } = require('./database/setup');
 require('dotenv').config();
 
@@ -10,7 +10,20 @@ const PORT = process.env.PORT || 3000;
 
 //Middleware
 app.use(express.json());
-requestLogger()
+
+//Logging middleware
+const requestLogger = (req, res, next) => {
+    const timestamp = new Date().toISOString();
+    console.log(`[${timestamp}] ${req.method} ${req.originalUrl}`);
+  
+    // Log request body for POST and PUT requests
+    if (req.method === 'POST' || req.method === 'PUT') {
+         console.log('Request Body:',
+   JSON.stringify(req.body, null, 2));
+}
+  
+    next(); // Pass control to next middleware
+};
 
 // Test database connection
 async function testConnection() {
@@ -65,7 +78,7 @@ app.get('/health', (req, res) => {
 
 // USER ROUTES
 
-// GET /api/users/profile - Get current user profile
+// GET /api/users/profile - Get current user profile (doesnt work yet)
 app.get('/api/users/profile', /*requireAuth,*/ async (req, res) => {
     try {
         const user = await User.findByPk(req.user.id, {
@@ -87,7 +100,7 @@ app.get('/api/users/profile', /*requireAuth,*/ async (req, res) => {
 app.get('/api/users',/* requireAuth, requireAdmin,*/ async (req, res) => {
     try {
         const users = await User.findAll({
-            attributes: ['id', 'name', 'email'] // Don't return passwords
+            attributes: ['id', 'username', 'email'] // Don't return passwords
         });
         
         res.json(users);
@@ -100,15 +113,19 @@ app.get('/api/users',/* requireAuth, requireAdmin,*/ async (req, res) => {
 // GET /api/users/:id - Get user by id
 app.get('/api/users/:id',/* requireAuth, requireAdmin,*/ async (req, res) => {
     try {
-        const users = await User.findOne({
+        const user = await User.findOne({
             where: {id: req.params.id},
-            attributes: ['id', 'name', 'email', 'role'] // Don't return passwords
+            attributes: ['id', 'username', 'email', 'role'] // Don't return passwords
         });
+
+         if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
         
-        res.json(users);
+        res.json(user);
     } catch (error) {
-        console.error('Error fetching users:', error);
-        res.status(500).json({ error: 'Failed to fetch users' });
+        console.error('Error fetching user:', error);
+        res.status(500).json({ error: 'Failed to fetch user' });
     }
 });
 
@@ -131,7 +148,7 @@ app.post('/api/users', /*requireAuth,*/ async (req, res) => {
             password, 
             location, 
             role,
-            userId: req.user.id
+            //userId: req.user.id
         });
         
         res.status(201).json({
@@ -230,7 +247,7 @@ app.get('/api/players/:id', /*requireAuth,*/ async (req, res) => {
 // POST /api/players - Create new player
 app.post('/api/players', /*requireAuth,*/ async (req, res) => {
     try {
-        const { name, conference, main, previous_rankings, season_ranking, status = 'inactive' } = req.body;
+        const { name, conference, main, previous_rankings, season_ranking, active_status = false } = req.body;
         
         // Validate input
         if (!name) {
@@ -246,8 +263,8 @@ app.post('/api/players', /*requireAuth,*/ async (req, res) => {
             main, 
             previous_rankings, 
             season_ranking, 
-            status,
-            userId: req.user.id
+            active_status,
+           //userId: req.user.id (will add back when login is implemented)
         });
         
         res.status(201).json({
@@ -264,13 +281,12 @@ app.post('/api/players', /*requireAuth,*/ async (req, res) => {
 // PUT /api/players/:id - Update player profile
 app.put('/api/players/:id', /*requireAuth,*/ async (req, res) => {
     try {
-        const { name, conference, main, previous_rankings, season_ranking, status } = req.body;
+        const { name, conference, main, previous_rankings, season_ranking, active_status } = req.body;
         
         // Find player
         const player = await Player.findOne({
             where: { 
                 id: req.params.id,
-                userId: req.user.id 
             }
         });
         
@@ -285,7 +301,7 @@ app.put('/api/players/:id', /*requireAuth,*/ async (req, res) => {
             main: main !== undefined ? main : player.main,
             previous_rankings: previous_rankings || player.previous_rankings,
             season_ranking : season_ranking || player.season_ranking,
-            status : status || player.status
+            active_status : active_status || player.active_status
         });
         
         res.json({
@@ -300,13 +316,13 @@ app.put('/api/players/:id', /*requireAuth,*/ async (req, res) => {
 });
 
 // DELETE /api/players/:id - Delete player profile
-app.delete('/api/players/:id', requireAuth, async (req, res) => {
+app.delete('/api/players/:id', /*requireAuth,*/ async (req, res) => {
     try {
         // Find player
         const player = await Player.findOne({
             where: { 
                 id: req.params.id,
-                userId: req.user.id 
+                //userId: req.user.id 
             }
         });
         
@@ -390,7 +406,7 @@ app.post('/api/tournaments', /*requireAuth, requireTO*/ async (req, res) => {
             game_played, 
             format, 
             accept_reg,
-            userId: req.user.id
+            //userId: req.user.id
         });
         
         res.status(201).json({
@@ -433,7 +449,7 @@ app.delete('/api/tournaments/:id',/* requireAuth,*/ async (req, res) => {
         const tournament = await Tournament.findOne({
             where: { 
                 id: req.params.id,
-                userId: req.user.id 
+                //userId: req.user.id 
             }
         });
         
