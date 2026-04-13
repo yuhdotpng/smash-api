@@ -45,7 +45,7 @@ DB_NAME=smash.db
     "email": "user@example.com", 
     "password": "password465", 
     "location": "MO",
-    "role": "player"
+    "role": "TO"
 }
 ```
 
