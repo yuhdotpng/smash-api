@@ -9,8 +9,8 @@ cd smash-api
 ## Setup Instructions
 1. Install dependencies: `npm install`
 2.  Create a `.env` file in the root directory:
-PORT=3000
-NODE_ENV=production
+PORT=3000 |
+NODE_ENV=production |
 DB_NAME=smash.db
 4. Setup Database: `npm run setup`
 5. Seed Database: `npm run seed`
