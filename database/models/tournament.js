@@ -1,5 +1,10 @@
-const {  DataTypes } = require('sequelize');
-const db = require('../setup');
+const { Sequelize, DataTypes } = require('sequelize');
+// Initialize database connection
+const db = new Sequelize({
+    dialect: 'sqlite',
+    storage: `database/${process.env.DB_NAME}` || 'smash.db',
+    logging: false
+});
 
 // Tournament Model
 const Tournament = db.define('Tournament', {
@@ -43,4 +48,4 @@ const Tournament = db.define('Tournament', {
     }
 });
 
-module.exports = {Tournament};
+module.exports = Tournament;

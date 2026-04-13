@@ -1,5 +1,10 @@
-const {  DataTypes } = require('sequelize');
-const db = require('../setup');
+const { Sequelize, DataTypes } = require('sequelize');
+// Initialize database connection
+const db = new Sequelize({
+    dialect: 'sqlite',
+    storage: `database/${process.env.DB_NAME}` || 'smash.db',
+    logging: false
+}); 
 
 // Players Model
 const Player = db.define('Player',{
