@@ -1,6 +1,5 @@
 const bcrypt = require('bcryptjs');
-const { db, User, Player, Tournament } = require('./models');
-
+const {db, User, Player, Tournament} = require('./setup')
 
 async function seedDatabase() {
     try {
@@ -27,7 +26,7 @@ async function seedDatabase() {
                 location: 'KC'
             },
             {
-                name: 'Cyrus',
+                username: 'Cyrus',
                 email: 'cyrus@example.com',
                 password: hashedPassword,
                 role: 'TO',
@@ -37,7 +36,7 @@ async function seedDatabase() {
                 username: 'Marcus',
                 email: 'marcus@example.com',
                 password: hashedPassword,
-                role: 'user'
+                role: 'player'
             }
         ]);
 
@@ -47,20 +46,20 @@ async function seedDatabase() {
             {
                 name: 'MasterofChar',
                 conference: 'KC',
-                main: ['Zelda', 'Cloud'],
+                main: 'Zelda',
                 previous_rankings: [1,2,4,2,6],
                 season_ranking: 9,
-                userId: users[0].id
+                userId: users[0].id,
+                active_status: false
             },
-            // This one is intentionally wrong for now
             {
                name: 'Char2',
                conference: 'KC',
-               main: ['Zelda', 'Cloud'],
-               previous_rankings: [2,6,2,3,7,10],
+               main: 'Zelda',
+               previous_rankings: [2,6,2,3,7],
                season_ranking: 15,
-               userId: users[2].id,
-               status: 'active'
+               userId: users[0].id,
+               active_status: true
             }
         ]);
 
