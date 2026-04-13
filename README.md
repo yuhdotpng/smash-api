@@ -4,6 +4,7 @@ An API for the Super Smash Brothers competitive scene
 ```bash
 git clone https://github.com/yuhdotpng/smash-api.git
 cd smash-api
+
 ```
 ## Setup Instructions
 1. Install dependencies: `npm install`
