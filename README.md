@@ -4,15 +4,18 @@ An API for the Super Smash Brothers competitive scene
 ```bash
 git clone https://github.com/yuhdotpng/smash-api.git
 cd smash-api
+
 ```
 ## Setup Instructions
 1. Install dependencies: `npm install`
 2.  Create a `.env` file in the root directory:
-PORT=3000
-3. Setup Database: `npm run setup`
-4. Seed Database: `npm run seed`
-5. Start the server: `npm start`
-6. The database will be running at `http://localhost:3000`
+PORT=3000 |
+NODE_ENV=production |
+DB_NAME=smash.db
+4. Setup Database: `npm run setup`
+5. Seed Database: `npm run seed`
+6. Start the server: `npm start`
+7. The database will be running at `http://localhost:3000`
 
 ## API endpoints
 ### Users
@@ -42,7 +45,7 @@ PORT=3000
     "email": "user@example.com", 
     "password": "password465", 
     "location": "MO",
-    "role": "player"
+    "role": "TO"
 }
 ```
 
