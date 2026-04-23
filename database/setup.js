@@ -1,5 +1,9 @@
 const { Sequelize, DataTypes } = require("sequelize");
 require('dotenv').config();
+const UserModel = require('./models/user');
+const TournamentModel= require('./models/tournament');
+const PlayerModel= require('./models/player');   
+
 //Intitalizing database
 const db = new Sequelize({ 
     dialect: 'sqlite', 
@@ -7,102 +11,12 @@ const db = new Sequelize({
     logging: false // Not necessary, but shows SQL queries in the console 
 })
 
-const User = db.define('User',{
-    id:{
-        type: DataTypes.INTEGER,
-        primaryKey: true,
-        autoIncrement: true
-    },
-    username:{
-        type: DataTypes.TEXT,
-        allowNull: false
-    },
-    email: {
-        type: DataTypes.TEXT,
-        allowNull: false,
-        unique: true
-    },
-    password: {
-        type: DataTypes.TEXT,
-        allowNull: false
-    },
-    location: {
-        type: DataTypes.TEXT,
-    },
-    role: {
-        type: DataTypes.ENUM('player', 'TO', 'admin'),
-        defaultValue: 'player',
-    }
-});
+//Inserting Models
+const User = db.define('User', UserModel);
+const Tournament = db.define('Tournament', TournamentModel);
+const Player = db.define('Player', PlayerModel);
 
-// Players Model
-const Player = db.define('Player',{
-    id:{
-        type: DataTypes.INTEGER,
-        primaryKey: true,
-        autoIncrement: true
-    },
-    name: {
-        type: DataTypes.TEXT,
-        allowNull: false
-    },
-    conference: {
-        type: DataTypes.TEXT,
-        allowNull: false
-    },
-    main: {
-        type: DataTypes.STRING,
-        allowNull: false
-    },
-    previous_rankings: {
-        type: DataTypes.JSON,
-        allowNull: false
-    },
-    season_ranking: {
-        type: DataTypes.INTEGER,
-    },
-    active_status: {
-        type: DataTypes. BOOLEAN,
-        defaultValue: false,
-    }
-});
 
-// Tournament Model
-const Tournament = db.define('Tournament', {
-    id:{
-        type: DataTypes.INTEGER,
-        primaryKey: true,
-        autoIncrement: true
-    },
-    name: {
-        type: DataTypes.TEXT,
-        allowNull: false
-    },
-    location: {
-        type: DataTypes.TEXT,
-        allowNull: false
-    },
-    entry_fee: {
-        type: DataTypes.FLOAT,
-        allowNull: false
-    },
-    attending_players: {
-        type: DataTypes.JSON
-    },
-    game_played: {
-        type: DataTypes.ENUM ('original', 'melee', 'brawl', '4', 'ultimate', 'projectM')
-        ,
-        allowNull: false
-    },
-    format: {
-        type: DataTypes.ENUM('single', 'double', 'round robin', 'pools', 'swiss'),
-        allowNull: false
-    },
-    accept_reg: {
-        type: DataTypes.BOOLEAN,
-        defaultValue: true
-    }
-});
 
 //Defining player and user table relationship
 if (User.role === 'player'){
