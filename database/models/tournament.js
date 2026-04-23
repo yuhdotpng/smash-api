@@ -1,24 +1,20 @@
-const { Sequelize, DataTypes } = require('sequelize');
+const { DataTypes } = require('sequelize');
 // Initialize database connection
-const db = new Sequelize({
-    dialect: 'sqlite',
-    storage: `database/${process.env.DB_NAME}` || 'smash.db',
-    logging: false
-});
+
 
 // Tournament Model
-const Tournament = db.define('Tournament', {
+const Tournament = {
     id:{
         type: DataTypes.INTEGER,
         primaryKey: true,
         autoIncrement: true
     },
     name: {
-        type: DataTypes.STRING,
+        type: DataTypes.TEXT,
         allowNull: false
     },
     location: {
-        type: DataTypes.STRING,
+        type: DataTypes.TEXT,
         allowNull: false
     },
     entry_fee: {
@@ -26,26 +22,21 @@ const Tournament = db.define('Tournament', {
         allowNull: false
     },
     attending_players: {
-        type: DataTypes.ARRAY(DataTypes.TEXT)
+        type: DataTypes.JSON
     },
     game_played: {
-        type: DataTypes.TEXT,
-        validate: {
-            isIN: ['original', 'melee', 'brawl', '4', 'ultimate', 'projectM']
-        },
+        type: DataTypes.ENUM ('original', 'melee', 'brawl', '4', 'ultimate', 'projectM')
+        ,
         allowNull: false
     },
     format: {
-        type: DataTypes.TEXT,
-        validate: {
-            isIN: ['single', 'double', 'round robin', 'pools', 'swiss']
-        },
+        type: DataTypes.ENUM('single', 'double', 'round robin', 'pools', 'swiss'),
         allowNull: false
     },
     accept_reg: {
         type: DataTypes.BOOLEAN,
         defaultValue: true
     }
-});
+};
 
 module.exports = Tournament;
