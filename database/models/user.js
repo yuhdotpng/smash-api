@@ -1,12 +1,6 @@
 const { Sequelize, DataTypes } = require('sequelize');
-// Initialize database connection
-const db = new Sequelize({
-    dialect: 'sqlite',
-    storage: `database/${process.env.DB_NAME}` || 'smash.db',
-    logging: console.log
-});
 
-const User = db.define('User',{
+const User = {
     id:{
         type: DataTypes.INTEGER,
         primaryKey: true,
@@ -17,24 +11,21 @@ const User = db.define('User',{
         allowNull: false
     },
     email: {
-        type: DataTypes.STRING,
+        type: DataTypes.TEXT,
         allowNull: false,
         unique: true
     },
     password: {
-        type: DataTypes.STRING,
+        type: DataTypes.TEXT,
         allowNull: false
     },
     location: {
         type: DataTypes.TEXT,
     },
     role: {
-        type: DataTypes.TEXT,
+        type: DataTypes.ENUM('player', 'TO', 'admin'),
         defaultValue: 'player',
-        validate: {
-            isIN: ['player', 'TO', 'admin']
-        }
     }
-});
+};
 
 module.exports = User;
