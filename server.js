@@ -1,29 +1,20 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
-//const jwt = require('jsonwebtoken');
+const jwt = require('jsonwebtoken');
 
 const { db, User, Player, Tournament } = require('./database/setup');
 require('dotenv').config();
+
+const {requestLogger, userValidation, playerValidation, tournamentValidation, handleValidationErrors} = require('./middleware/middleware')
+const {requirePlayer, requireTO, requireAdmin} = require('./middleware/authoritzation');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 //Middleware
 app.use(express.json());
+app.use(requestLogger);
 
-//Logging middleware
-const requestLogger = (req, res, next) => {
-    const timestamp = new Date().toISOString();
-    console.log(`[${timestamp}] ${req.method} ${req.originalUrl}`);
-  
-    // Log request body for POST and PUT requests
-    if (req.method === 'POST' || req.method === 'PUT') {
-         console.log('Request Body:',
-   JSON.stringify(req.body, null, 2));
-}
-  
-    next(); // Pass control to next middleware
-};
 
 // Test database connection
 async function testConnection() {
@@ -38,7 +29,7 @@ async function testConnection() {
 testConnection();
 
 // Health check endpoint
-app.get('/health', (req, res) => {
+app.get('/health', requestLogger, (req, res) => {
     res.json({ 
         status: 'OK', 
         message: 'Smash API is running',
@@ -54,8 +45,9 @@ app.get('/health', (req, res) => {
         version: '1.0.0',
         endpoints: {
             health: '/health',
-            register: 'POST /api/register (not available yet)',
+            register: 'POST /api/register',
             login: 'POST /api/login',
+            logout ' POST /api/logout'
             players: 'GET /api/players (requires auth)',
             singlePlayer: 'GET /api/players/:id',
             createPlayer: 'POST /api/players (requires admin)',
@@ -74,7 +66,109 @@ app.get('/health', (req, res) => {
         }
     });
 }); */
-//TODO: register and login endpoints
+//Authenication endpoints
+// POST /api/register - Register new user
+app.post('/api/register', async (req, res) => {
+    try {
+        const { username, email, password, location, role = 'user' } = req.body;
+        
+        // Validate input
+        if (!username || !email || !password) {
+            return res.status(400).json({ 
+                error: 'Username, email, and password are required' 
+            });
+        }
+        
+        // Check if user exists
+        const existingUser = await User.findOne({ where: { email } });
+        if (existingUser) {
+            return res.status(400).json({ 
+                error: 'User with this email already exists' 
+            });
+        }
+        
+        // Hash password
+        const hashedPassword = await bcrypt.hash(password, 10);
+        
+        // Create user
+        const newUser = await User.create({
+            username,
+            email,
+            password: hashedPassword,
+            location,
+            role
+        });
+        
+        res.status(201).json({
+            message: 'User registered successfully',
+            user: {
+                id: newUser.id,
+                username: newUser.username,
+                email: newUser.email,
+                role: newUser.role
+            }
+        });
+        
+    } catch (error) {
+        console.error('Error registering user:', error);
+        res.status(500).json({ error: 'Failed to register user' });
+    }
+});
+
+// POST /api/login - User login
+app.post('/api/login', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        
+        // Validate input
+        if (!email || !password) {
+            return res.status(400).json({ 
+                error: 'Email and password are required' 
+            });
+        }
+        
+        // Find user
+        const user = await User.findOne({ where: { email } });
+        if (!user) {
+            return res.status(401).json({ 
+                error: 'Invalid email or password' 
+            });
+        }
+        
+        // Verify password
+        const isValidPassword = await bcrypt.compare(password, user.password);
+        if (!isValidPassword) {
+            return res.status(401).json({ 
+                error: 'Invalid email or password' 
+            });
+        }
+        
+        // Generate JWT token
+        const token = jwt.sign(
+            { 
+                id: user.id, 
+                name: user.name, 
+                email: user.email 
+            },
+            process.env.JWT_SECRET,
+            { expiresIn: process.env.JWT_EXPIRES_IN }
+        );
+        
+        res.json({
+            message: 'Login successful',
+            token: token,
+            user: {
+                id: user.id,
+                name: user.name,
+                email: user.email
+            }
+        });
+        
+    } catch (error) {
+        console.error('Error logging in user:', error);
+        res.status(500).json({ error: 'Failed to login' });
+    }
+});
 
 // USER ROUTES
 
@@ -82,7 +176,7 @@ app.get('/health', (req, res) => {
 app.get('/api/users/profile', /*requireAuth,*/ async (req, res) => {
     try {
         const user = await User.findByPk(req.user.id, {
-            attributes: ['id', 'name', 'email', 'role'] // Don't return password
+            attributes: ['id', 'name', 'email', 'location', 'role'] // Don't return password
         });
         
         if (!user) {
@@ -129,38 +223,6 @@ app.get('/api/users/:id',/* requireAuth, requireAdmin,*/ async (req, res) => {
     }
 });
 
-// POST /api/users - Create new player
-app.post('/api/users', /*requireAuth,*/ async (req, res) => {
-    try {
-        const { username, email, password, location, role = 'player' } = req.body;
-        
-        // Validate input
-        if (!username) {
-            return res.status(400).json({ 
-                error: 'username is required' 
-            });
-        }
-        
-        // Create player
-        const newUser = await User.create({
-            username, 
-            email, 
-            password, 
-            location, 
-            role,
-            //userId: req.user.id
-        });
-        
-        res.status(201).json({
-            message: 'User created successfully',
-            user: newUser
-        });
-        
-    } catch (error) {
-        console.error('Error creating user:', error);
-        res.status(500).json({ error: 'Failed to create user' });
-    }
-});
 
 // PUT /api/users/:id - Update user 
 app.put('/api/users/:id',/* requireAuth, requireManager,*/ async (req, res) => {
