@@ -19,16 +19,8 @@ const Player = db.define('Player', PlayerModel);
 
 
 //Defining player and user table relationship
-if (User.role === 'player'){
-    User.hasOne(Player, {foreignKey: 'userId'});
-    Player.belongsTo(User, {foreignKey: 'userId'});
-};
-
-//Defining tournament and user relationship
-if (User.role === 'TO') {
-    User.hasMany(Tournament, {foreignKey: 'userId'});
-    Tournament.belongsTo(User, {foreignKey: 'userId'});
-};
+User.hasOne(Player, {foreignKey: 'userId'});
+Player.belongsTo(User, {foreignKey: 'userId'});
 
 //Defining tournament and player relationship
 Player.hasMany(Tournament, {foreignKey: 'playerId'});
