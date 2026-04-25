@@ -23,8 +23,8 @@ const User = {
         type: DataTypes.TEXT,
     },
     role: {
-        type: DataTypes.ENUM('player', 'TO', 'admin'),
-        defaultValue: 'player',
+        type: DataTypes.ENUM('user', 'player', 'TO', 'admin'),
+        defaultValue: 'user',
     }
 };
 
