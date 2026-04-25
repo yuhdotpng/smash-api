@@ -22,7 +22,6 @@ const Player = {
     },
     previous_rankings: {
         type: DataTypes.JSON,
-        allowNull: false
     },
     season_ranking: {
         type: DataTypes.INTEGER,
