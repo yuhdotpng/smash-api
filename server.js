@@ -19,6 +19,9 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(requestLogger);
 
+const cors = require('cors');
+app.use(cors());
+
 
 // Test database connection
 async function testConnection() {
