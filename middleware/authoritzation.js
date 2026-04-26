@@ -12,7 +12,7 @@ function requirePlayer(req, res, next) {
         next();
     } else {
         return res.status(403).json({ 
-            error: 'Access denied. PLayer role required.' 
+            error: 'Access denied. Player role required.' 
         });
     }
 }
