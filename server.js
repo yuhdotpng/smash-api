@@ -6,11 +6,6 @@ const { db, User, Player, Tournament } = require('./database/setup');
 require('dotenv').config();
 
 const {requestLogger, 
-    userValidationUser,
-    userValidationAdmin, 
-    playerValidation, 
-    tournamentValidation, 
-    handleValidationErrors, 
     requireAuth} = require('./middleware/middleware')
 
 const {requirePlayer, 
@@ -38,7 +33,7 @@ async function testConnection() {
 testConnection();
 
 // Health check endpoint
-app.get('/health', requestLogger, (req, res) => {
+app.get('/health', (req, res) => {
     res.json({ 
         status: 'OK', 
         message: 'Smash API is running',
@@ -47,8 +42,8 @@ app.get('/health', requestLogger, (req, res) => {
     });
 });
 
-// Root endpoint (will be added back once I get all of my special routes)
-/*app.get('/', (req, res) => {
+ //Root endpoint 
+app.get('/', (req, res) => {
     res.json({
         message: 'Welcome to Super Smash Brothers API',
         version: '1.0.0',
@@ -56,30 +51,26 @@ app.get('/health', requestLogger, (req, res) => {
             health: '/health',
             register: 'POST /api/register',
             login: 'POST /api/login',
-            logout: ' POST /api/logout'
-            profile: 'GET /api/users/profile'
-            users: 'GET /api/users (requires Admin)'
-            updateOwnUser: 'PUT /api/users/profile'
-            deleteOwnUser: 'DELETE /api/users/profile'
-            userById: 'GET /api/user/:id (requires admin)'
+            logout: ' POST /api/logout',
+            userProfile: 'GET /api/users/profile',
+            users: 'GET /api/users (requires Admin)',
             players: 'GET /api/players',
-            singlePlayer: 'GET /api/players/:id',
-            createPlayer: 'POST /api/players (requires admin)',
-            updateOwnPlayer: 'PUT /api/players/profile (requires auth)',
-            updatePlayerRanking: 'PUT /api/players/:id/ranking (requires TO)',
-            deleteOwnPlayer: 'DELETE /api/players/profile (requires player)',
-            tournamnents: 'GET /api/tournaments (requires auth)',
-            singleTournament: 'GET /api/tournaments/:id (requires auth)',
-            createTournament: 'POST /api/tournaments (requires TO)',
-            updateOwnTournament: 'PUT /api/tournaments/:id (requires TO)',
-            deleteOwnTournament: 'DELETE /api/tournaments/:id (requires TO)',
+            playerById: 'GET /api/players/id',
+            playerProfile: 'GET /api/players/profile',
+            createPlayer: 'POST /api/players',
+            updatePlayerProfile: 'PUT /api/players/profile (requires player)',
             updatePlayer: 'PUT /api/players/:id (requires admin)',
-            deletePlayer: 'DELETE /api/admin/players/:id (requires admin)',
-            updateTournament: 'PUT /api/admin/tournaments/:id (requires admin)',
-            deleteTournaments: 'DELETE /api/admin/tournaments/:id (requires admin)',
+            deletePlayerProfile: 'DELETE /api/players/profile (requires player)',
+            deletePlayer: 'DELETE /api/players/:id',
+            tournaments: 'GET /api/tournaments',
+            tournamentById: 'GET /api/tournaments/:id',
+            createTournament: 'POST /api/tournaments',
+            updateTournament: 'PUT /api/tournaments/:id (requires TO for own tournaments, requires admin for any tournament)',
+            deleteTournament: 'DELETE /api/tournaments/:id (requires TO for own tournaments, requires admin for any tournament)'
+
         }
     });
-}); */
+}); 
 //Authenication endpoints
 // POST /api/register - Register new user
 app.post('/api/register', async (req, res) => {
@@ -162,7 +153,8 @@ app.post('/api/login', async (req, res) => {
             { 
                 id: user.id, 
                 name: user.name, 
-                email: user.email 
+                email: user.email,
+                role: user.role
             },
             process.env.JWT_SECRET,
             { expiresIn: process.env.JWT_EXPIRES_IN }
@@ -173,8 +165,9 @@ app.post('/api/login', async (req, res) => {
             token: token,
             user: {
                 id: user.id,
-                name: user.name,
-                email: user.email
+                username: user.username,
+                email: user.email,
+                role: user.role
             }
         });
         
@@ -243,20 +236,22 @@ app.get('/api/users/:id', requireAuth, requireAdmin, async (req, res) => {
 
 
 // PUT /api/users/profile - Update own user 
-app.put('/api/users/profile', requireAuth, userValidationUser, async (req, res) => {
+app.put('/api/users/profile', requireAuth, async (req, res) => {
     try {
         
-        const { username, email, password, location} = req.body;
+        const { username, email, password, location, role} = req.body;
         
         const [updatedRowsCount] = await User.update(
-            { username, email, password, location },
+            { username, email, password, location, role},
             { where: { id: req.user.id } }
         );
-        
+        if (req.body.role === 'TO' || req.body.role === 'admin'){
+            return res.status(400).json({ error: 'cannot update own role' });
+        }
         if (updatedRowsCount === 0) {
             return res.status(404).json({ error: 'user not found' });
         }
-        
+
         const updatedUser = await User.findByPk(req.user.id);
         res.json(updatedUser);
     } catch (error) {
@@ -266,13 +261,23 @@ app.put('/api/users/profile', requireAuth, userValidationUser, async (req, res) 
 });
 
 // PUT /api/users/:id - Update users by id
-app.put('/api/users/:id', requireAuth, requireAdmin, userValidationAdmin, async (req, res) => {
+app.put('/api/users/:id', requireAuth, requireAdmin, async (req, res) => {
     try {
-        
-        const { username, email, password, location, role} = req.body;
+        const user = await User.findOne({
+            where: {id: req.params.id}
+        }); 
+
+        const { username, location, role} = req.body;
         
         const [updatedRowsCount] = await User.update(
-            { username, email, password, location },
+            {
+                //ensuring admins cant update a user's email or password
+                username: username || user.username, 
+                email:  user.email, 
+                password: user.password,
+                location: location || user.location, 
+                role: role || user.role
+            },
             { where: { id: req.params.id } }
         );
         
@@ -345,15 +350,32 @@ app.get('/api/players', requireAuth, async (req, res) => {
     }
 });
 
-// GET /api/players/:name - Get single player
-app.get('/api/players/:name', requireAuth, async (req, res) => {
+// GET /api/players/:id - Get single player
+app.get('/api/players/:id', requireAuth, async (req, res) => {
     try {
-        const player = await Player.findOne({
-            where: { 
-                name: req.params.name,
-            }
-        });
+        const player = await Player.findByPk(req.params.id, {
         
+        });
+
+        if (!player) {
+            return res.status(404).json({ error: 'Player not found' });
+        }
+        
+        res.json(player);
+        
+    } catch (error) {
+        console.error('Error fetching player:', error);
+        res.status(500).json({ error: 'Failed to fetch player' });
+    }
+});
+
+// GET /api/players/profile - Get single player
+app.get('/api/players/profile', requireAuth, async (req, res) => {
+    try {
+        const player = await Player.findByPk(req.user.id, {
+        
+        });
+
         if (!player) {
             return res.status(404).json({ error: 'Player not found' });
         }
@@ -367,9 +389,9 @@ app.get('/api/players/:name', requireAuth, async (req, res) => {
 });
 
 // POST /api/players - Create new player
-app.post('/api/players', requireAuth, async (req, res) => {
+app.post('/api/players', requireAuth, requirePlayer, async (req, res) => {
     try {
-        const { name, conference, main, previous_rankings, season_ranking, active_status = false } = req.body;
+        const { name, conference, main, active_status = false } = req.body;
         
         // Validate input
         if (!name) {
@@ -382,9 +404,7 @@ app.post('/api/players', requireAuth, async (req, res) => {
         const newPlayer = await Player.create({
             name,
             conference, 
-            main, 
-            previous_rankings, 
-            season_ranking, 
+            main,  
             active_status,
             userId: req.user.id 
         });
@@ -400,12 +420,83 @@ app.post('/api/players', requireAuth, async (req, res) => {
     }
 });
 
-// PUT /api/players/:id - Update own player profile
-app.put('/api/players/profile', requireAuth, async (req, res) => {
+// PUT /api/players/profile - Update own player profile
+app.put('/api/players/profile', requireAuth, requirePlayer, async (req, res) => {
+    try {
+        const { name, conference, main, active_status } = req.body;
+        
+        const player = await Player.findByPk(req.user.id,{
+            where: { 
+                id: req.params.id,
+            }
+        });
+        
+        if (!player) {
+            return res.status(404).json({ error: 'Player not found' });
+        }
+        
+        // Update player profile
+        await player.update({
+            name: name || player.name,
+            conference: conference !== undefined ? conference : player.conference,
+            main: main !== undefined ? main : player.main,
+            active_status : active_status || player.active_status
+        });
+        
+        res.json({
+            message: 'Player profile updated successfully',
+            player: player
+        });
+        
+    } catch (error) {
+        console.error('Error updating player:', error);
+        res.status(500).json({ error: 'Failed to update player' });
+    }
+});
+
+// PUT /api/players/:id - Update player rankings
+app.put('/api/players/:id', requireAuth, requireTO, async (req, res) => {
+    try {
+        const { previous_rankings} = req.body;
+        
+        const player = await Player.findByPk(req.params.id,{
+            where: { 
+                id: req.params.id,
+            }
+        });
+        
+        if (!player) {
+            return res.status(404).json({ error: 'Player not found' });
+        }
+        
+        // Update player profile
+        //ensures TOs can only update player's tournament rankings
+        await player.update({
+            name: player.name,
+            conference: player.conference,
+            main: player.main,
+            previous_rankings: previous_rankings || player.previous_rankings,
+            season_ranking : player.season_ranking,
+            active_status : player.active_status
+        });
+        
+        res.json({
+            message: 'Player profile updated successfully',
+            player: player
+        });
+        
+    } catch (error) {
+        console.error('Error updating player:', error);
+        res.status(500).json({ error: 'Failed to update player' });
+    }
+});
+
+// PUT /api/players/admin/:id - Update player profiles
+app.put('/api/players/admin/:id', requireAuth, requireAdmin, async (req, res) => {
     try {
         const { name, conference, main, previous_rankings, season_ranking, active_status } = req.body;
         
-        const player = await Player.findByPk(req.user.id,{
+        const player = await Player.findByPk(req.params.id,{
             where: { 
                 id: req.params.id,
             }
@@ -436,14 +527,40 @@ app.put('/api/players/profile', requireAuth, async (req, res) => {
     }
 });
 
+// DELETE /api/players/profile - Delete own player profile
+app.delete('/api/players/profile', requireAuth, requirePlayer, async (req, res) => {
+    try {
+        // Find player
+        const player = await Player.findOne({
+            where: { 
+                id: req.user.id,
+            }
+        });
+        
+        if (!player) {
+            return res.status(404).json({ error: 'Player not found' });
+        }
+        
+        // Delete player
+        await player.destroy();
+        
+        res.json({
+            message: 'Player deleted successfully'
+        });
+        
+    } catch (error) {
+        console.error('Error deleting player:', error);
+        res.status(500).json({ error: 'Failed to delete player' });
+    }
+});
+
 // DELETE /api/players/:id - Delete player profile
-app.delete('/api/players/:id', /*requireAuth,*/ async (req, res) => {
+app.delete('/api/players/:id', requireAuth, requireAdmin, async (req, res) => {
     try {
         // Find player
         const player = await Player.findOne({
             where: { 
                 id: req.params.id,
-                //userId: req.user.id 
             }
         });
         
@@ -467,7 +584,7 @@ app.delete('/api/players/:id', /*requireAuth,*/ async (req, res) => {
 // TOURNAMENT ROUTES
 
 // GET /api/tournaments - Get all tournaments for authenticated user
-app.get('/api/tournaments', /*requireAuth,*/ async (req, res) => {
+app.get('/api/tournaments', requireAuth, async (req, res) => {
     try {
         const tournaments = await Tournament.findAll({
             order: [['createdAt', 'DESC']]
@@ -486,7 +603,7 @@ app.get('/api/tournaments', /*requireAuth,*/ async (req, res) => {
 });
 
 // GET /api/tournaments/:id - Get single tournament
-app.get('/api/tournaments/:id', /*requireAuth,*/ async (req, res) => {
+app.get('/api/tournaments/:id', requireAuth, async (req, res) => {
     try {
         const tournament = await Tournament.findOne({
             where: { 
@@ -507,9 +624,9 @@ app.get('/api/tournaments/:id', /*requireAuth,*/ async (req, res) => {
 });
 
 // POST /api/tournaments - Create new player
-app.post('/api/tournaments', /*requireAuth, requireTO*/ async (req, res) => {
+app.post('/api/tournaments', requireAuth, requireTO, async (req, res) => {
     try {
-        const { name, location, entry_fee, attending_player, game_played, format, accept_reg = true } = req.body;
+        const { name, location, entry_fee, attending_players, game_played, format, accept_reg = true } = req.body;
         
         // Validate input
         if (!name) {
@@ -523,11 +640,11 @@ app.post('/api/tournaments', /*requireAuth, requireTO*/ async (req, res) => {
             name, 
             location, 
             entry_fee, 
-            attending_player, 
+            attending_players, 
             game_played, 
             format, 
             accept_reg,
-            //userId: req.user.id
+            organizer: req.user.username
         });
         
         res.status(201).json({
@@ -541,20 +658,28 @@ app.post('/api/tournaments', /*requireAuth, requireTO*/ async (req, res) => {
     }
 });
 
-/// PUT /api/tournaments/:id - Update tournament 
-app.put('/api/tournaments/:id',/* requireAuth, requireTO ,*/ async (req, res) => {
+// PUT /api/tournaments/:id - Update tournaments 
+app.put('/api/tournaments/:id', requireAuth, requireTO , async (req, res) => {
     try {
-        const { name, location, entry_fee, attending_player, game_played, format, accept_reg } = req.body;
+        const { name, location, entry_fee, attending_player, game_played, format, accept_reg }
+         = req.body;
+
+        const tournament = await Tournament.findByPk(req.params.id);
+        if (!tournament) {
+        return res.status(404).json({ error: 'Post not found' });
+    }
         
         const [updatedRowsCount] = await Tournament.update(
             { name, location, entry_fee, attending_player, game_played, format, accept_reg },
             { where: { id: req.params.id } }
         );
-        
         if (updatedRowsCount === 0) {
             return res.status(404).json({ error: 'Tournament not found' });
         }
-        
+        // TOs can only edit their own tournaments, admins can edit any tournament
+        if (req.user.role === 'TO' && tournament.orgId !== req.user.id) {
+            return res.status(403).json({ error: 'You can only edit your own tournaments' });
+        }
         const updatedTournament = await Tournament.findByPk(req.params.id);
         res.json(updatedTournament);
     } catch (error) {
@@ -564,18 +689,21 @@ app.put('/api/tournaments/:id',/* requireAuth, requireTO ,*/ async (req, res) =>
 });
 
 // DELETE /api/tournaments/:id - Delete tournament profile
-app.delete('/api/tournaments/:id',/* requireAuth,*/ async (req, res) => {
+app.delete('/api/tournaments/:id',requireAuth, requireTO, async (req, res) => {
     try {
         // Find tournament
         const tournament = await Tournament.findOne({
             where: { 
-                id: req.params.id,
-                //userId: req.user.id 
+                id: req.params.id, 
             }
         });
         
         if (!tournament) {
             return res.status(404).json({ error: 'Tournament not found' });
+        }
+        // TOs can only delete their own tournaments, admins can delete any tournament
+        if (req.user.role === 'TO' && tournament.orgId !== req.user.id) {
+            return res.status(403).json({ error: 'You can only delete your own tournaments' });
         }
         
         // Delete tournament
@@ -591,7 +719,7 @@ app.delete('/api/tournaments/:id',/* requireAuth,*/ async (req, res) => {
     }
 });
 
-// Start server
+// Start server (
 app.listen(PORT, () => {
     console.log(`Server running on port http://localhost:${PORT}`);
-});
+    });
