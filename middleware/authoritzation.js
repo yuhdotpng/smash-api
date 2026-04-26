@@ -23,7 +23,7 @@ function requireTO(req, res, next) {
         return res.status(401).json({ error: 'Authentication required' });
     }
     
-    // Check if user has TO or admin role
+    // Check if user has admin or TO role
     if (req.user.role === 'TO' || req.user.role === 'admin') {
         next();
     } else {
