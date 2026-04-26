@@ -8,7 +8,7 @@ const PlayerModel= require('./models/player');
 const db = new Sequelize({ 
     dialect: 'sqlite', 
     storage: `database/${process.env.DB_NAME}` || 'smash.db', 
-    logging: false // Not necessary, but shows SQL queries in the console 
+    logging: false
 })
 
 //Inserting Models
@@ -31,24 +31,20 @@ User.hasMany(Tournament, {foreignKey: 'orgId'});
 Tournament.belongsTo(User, {foreignKey: 'orgId', as: 'organizer'});
 
 // Initialize database
-async function setupDatabase() { 
-    try { 
-        await db.authenticate(); 
-        console.log('Connection to databaseestablished successfully.'); 
-
-        await db.sync({ force: true })
-        console.log('Database file created at:',`database/${process.env.DB_NAME}`); 
-
-        await db.close(); 
-    } catch (error) { 
-         console.error('Unable to connect to the database:', error); 
-    } 
+async function initializeDatabase() {
+    try {
+        await db.authenticate();
+        console.log('Database connection established successfully.');
+        
+        await db.sync({ force: true });
+        console.log('Database synchronized successfully.');
+        
+    } catch (error) {
+        console.error('Unable to connect to database:', error);
+    }
 }
 
-// Run setup if this file is executed directly
-if (require.main === module) {
-    setupDatabase();
-}
+initializeDatabase();
 
 
 // Export for use in other files
@@ -57,5 +53,5 @@ module.exports = {
     User,
     Player,
     Tournament,
-    setupDatabase
+    initializeDatabase
 };
