@@ -6,7 +6,8 @@ const { db, User, Player, Tournament } = require('./database/setup');
 require('dotenv').config();
 
 const {requestLogger, 
-    userValidation, 
+    userValidationUser,
+    userValidationAdmin, 
     playerValidation, 
     tournamentValidation, 
     handleValidationErrors, 
@@ -55,19 +56,24 @@ app.get('/health', requestLogger, (req, res) => {
             health: '/health',
             register: 'POST /api/register',
             login: 'POST /api/login',
-            logout ' POST /api/logout'
-            players: 'GET /api/players (requires auth)',
+            logout: ' POST /api/logout'
+            profile: 'GET /api/users/profile'
+            users: 'GET /api/users (requires Admin)'
+            updateOwnUser: 'PUT /api/users/profile'
+            deleteOwnUser: 'DELETE /api/users/profile'
+            userById: 'GET /api/user/:id (requires admin)'
+            players: 'GET /api/players',
             singlePlayer: 'GET /api/players/:id',
             createPlayer: 'POST /api/players (requires admin)',
-            updateOwnPlayer: 'PUT /api/players/:id (requires auth)',
+            updateOwnPlayer: 'PUT /api/players/profile (requires auth)',
             updatePlayerRanking: 'PUT /api/players/:id/ranking (requires TO)',
-            deleteOwnPlayer: 'DELETE /api/players/:id (requires auth )',
+            deleteOwnPlayer: 'DELETE /api/players/profile (requires player)',
             tournamnents: 'GET /api/tournaments (requires auth)',
             singleTournament: 'GET /api/tournaments/:id (requires auth)',
             createTournament: 'POST /api/tournaments (requires TO)',
             updateOwnTournament: 'PUT /api/tournaments/:id (requires TO)',
             deleteOwnTournament: 'DELETE /api/tournaments/:id (requires TO)',
-            updatePlayer: 'PUT /api/admin/players/:id (requires admin)',
+            updatePlayer: 'PUT /api/players/:id (requires admin)',
             deletePlayer: 'DELETE /api/admin/players/:id (requires admin)',
             updateTournament: 'PUT /api/admin/tournaments/:id (requires admin)',
             deleteTournaments: 'DELETE /api/admin/tournaments/:id (requires admin)',
@@ -184,11 +190,11 @@ app.post('/api/logout', (req, res) =>
 
 // USER ROUTES
 
-// GET /api/users/profile - Get current user profile (doesnt work yet)
-app.get('/api/users/profile', /*requireAuth,*/ async (req, res) => {
+// GET /api/users/profile - Get current user profile 
+app.get('/api/users/profile', requireAuth, async (req, res) => {
     try {
         const user = await User.findByPk(req.user.id, {
-            attributes: ['id', 'name', 'email', 'location', 'role'] // Don't return password
+            attributes: ['id', 'username', 'email', 'location', 'role'] // Don't return password
         });
         
         if (!user) {
@@ -206,7 +212,7 @@ app.get('/api/users/profile', /*requireAuth,*/ async (req, res) => {
 app.get('/api/users', requireAuth, requireAdmin, async (req, res) => {
     try {
         const users = await User.findAll({
-            attributes: ['id', 'username', 'email'] // Don't return passwords
+            attributes: ['id', 'username', 'email', 'location', 'role'] // Don't return passwords
         });
         
         res.json(users);
@@ -236,13 +242,37 @@ app.get('/api/users/:id', requireAuth, requireAdmin, async (req, res) => {
 });
 
 
-// PUT /api/users/:id - Update user 
-app.put('/api/users/:id', requireAuth, requireManager, async (req, res) => {
+// PUT /api/users/profile - Update own user 
+app.put('/api/users/profile', requireAuth, userValidationUser, async (req, res) => {
     try {
-        const { username, email, password, location, role } = req.body;
+        
+        const { username, email, password, location} = req.body;
         
         const [updatedRowsCount] = await User.update(
-            { username, email, password, location, role },
+            { username, email, password, location },
+            { where: { id: req.user.id } }
+        );
+        
+        if (updatedRowsCount === 0) {
+            return res.status(404).json({ error: 'user not found' });
+        }
+        
+        const updatedUser = await User.findByPk(req.user.id);
+        res.json(updatedUser);
+    } catch (error) {
+        console.error('Error updating user:', error);
+        res.status(500).json({ error: 'Failed to update user' });
+    }
+});
+
+// PUT /api/users/:id - Update users by id
+app.put('/api/users/:id', requireAuth, requireAdmin, userValidationAdmin, async (req, res) => {
+    try {
+        
+        const { username, email, password, location, role} = req.body;
+        
+        const [updatedRowsCount] = await User.update(
+            { username, email, password, location },
             { where: { id: req.params.id } }
         );
         
@@ -258,8 +288,26 @@ app.put('/api/users/:id', requireAuth, requireManager, async (req, res) => {
     }
 });
 
-// DELETE /api/users/:id - Delete user 
-app.delete('/api/users/:id',/* requireAuth, requireAdmin,*/ async (req, res) => {
+// DELETE /api/users/profile - Delete own profile
+app.delete('/api/users/profile', requireAuth, async (req, res) => {
+    try {
+        const deletedRowsCount = await User.destroy({
+            where: { id: req.user.id }
+        });
+        
+        if (deletedRowsCount === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        res.json({ message: 'User deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting user:', error);
+        res.status(500).json({ error: 'Failed to delete user' });
+    }
+});
+
+// DELETE /api/users/:id - Delete user by id
+app.delete('/api/users/profile', requireAuth ,requireAdmin, async (req, res) => {
     try {
         const deletedRowsCount = await User.destroy({
             where: { id: req.params.id }
@@ -279,7 +327,7 @@ app.delete('/api/users/:id',/* requireAuth, requireAdmin,*/ async (req, res) => 
 // PLAYER ROUTES
 
 // GET /api/players - Get all players for authenticated user
-app.get('/api/players', /*requireAuth,*/ async (req, res) => {
+app.get('/api/players', requireAuth, async (req, res) => {
     try {
         const players = await Player.findAll({
             order: [['createdAt', 'DESC']]
@@ -297,12 +345,12 @@ app.get('/api/players', /*requireAuth,*/ async (req, res) => {
     }
 });
 
-// GET /api/players/:id - Get single player
-app.get('/api/players/:id', /*requireAuth,*/ async (req, res) => {
+// GET /api/players/:name - Get single player
+app.get('/api/players/:name', requireAuth, async (req, res) => {
     try {
         const player = await Player.findOne({
             where: { 
-                id: req.params.id,
+                name: req.params.name,
             }
         });
         
@@ -319,7 +367,7 @@ app.get('/api/players/:id', /*requireAuth,*/ async (req, res) => {
 });
 
 // POST /api/players - Create new player
-app.post('/api/players', /*requireAuth,*/ async (req, res) => {
+app.post('/api/players', requireAuth, async (req, res) => {
     try {
         const { name, conference, main, previous_rankings, season_ranking, active_status = false } = req.body;
         
@@ -338,7 +386,7 @@ app.post('/api/players', /*requireAuth,*/ async (req, res) => {
             previous_rankings, 
             season_ranking, 
             active_status,
-           //userId: req.user.id (will add back when login is implemented)
+            userId: req.user.id 
         });
         
         res.status(201).json({
@@ -352,13 +400,12 @@ app.post('/api/players', /*requireAuth,*/ async (req, res) => {
     }
 });
 
-// PUT /api/players/:id - Update player profile
-app.put('/api/players/:id', /*requireAuth,*/ async (req, res) => {
+// PUT /api/players/:id - Update own player profile
+app.put('/api/players/profile', requireAuth, async (req, res) => {
     try {
         const { name, conference, main, previous_rankings, season_ranking, active_status } = req.body;
         
-        // Find player
-        const player = await Player.findOne({
+        const player = await Player.findByPk(req.user.id,{
             where: { 
                 id: req.params.id,
             }
