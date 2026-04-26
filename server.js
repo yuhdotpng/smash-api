@@ -5,8 +5,16 @@ const jwt = require('jsonwebtoken');
 const { db, User, Player, Tournament } = require('./database/setup');
 require('dotenv').config();
 
-const {requestLogger, userValidation, playerValidation, tournamentValidation, handleValidationErrors} = require('./middleware/middleware')
-const {requirePlayer, requireTO, requireAdmin} = require('./middleware/authoritzation');
+const {requestLogger, 
+    userValidation, 
+    playerValidation, 
+    tournamentValidation, 
+    handleValidationErrors, 
+    requireAuth} = require('./middleware/middleware')
+
+const {requirePlayer, 
+    requireTO, 
+    requireAdmin} = require('./middleware/authoritzation');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -170,6 +178,10 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
+// POST /api/logout - User logout
+app.post('/api/logout', (req, res) => 
+        res.json({ message: 'Logout successful' }))
+
 // USER ROUTES
 
 // GET /api/users/profile - Get current user profile (doesnt work yet)
@@ -191,7 +203,7 @@ app.get('/api/users/profile', /*requireAuth,*/ async (req, res) => {
 });
 
 // GET /api/users - Get all users 
-app.get('/api/users',/* requireAuth, requireAdmin,*/ async (req, res) => {
+app.get('/api/users', requireAuth, requireAdmin, async (req, res) => {
     try {
         const users = await User.findAll({
             attributes: ['id', 'username', 'email'] // Don't return passwords
@@ -205,7 +217,7 @@ app.get('/api/users',/* requireAuth, requireAdmin,*/ async (req, res) => {
 });
 
 // GET /api/users/:id - Get user by id
-app.get('/api/users/:id',/* requireAuth, requireAdmin,*/ async (req, res) => {
+app.get('/api/users/:id', requireAuth, requireAdmin, async (req, res) => {
     try {
         const user = await User.findOne({
             where: {id: req.params.id},
@@ -225,7 +237,7 @@ app.get('/api/users/:id',/* requireAuth, requireAdmin,*/ async (req, res) => {
 
 
 // PUT /api/users/:id - Update user 
-app.put('/api/users/:id',/* requireAuth, requireManager,*/ async (req, res) => {
+app.put('/api/users/:id', requireAuth, requireManager, async (req, res) => {
     try {
         const { username, email, password, location, role } = req.body;
         
