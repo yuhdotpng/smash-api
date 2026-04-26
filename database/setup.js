@@ -26,6 +26,10 @@ Player.belongsTo(User, {foreignKey: 'userId'});
 Player.hasMany(Tournament, {foreignKey: 'playerId'});
 Tournament.belongsTo(Player, {foreignKey:'playerId'});
 
+//Defining tournament and user relationship
+User.hasMany(Tournament, {foreignKey: 'orgId'});
+Tournament.belongsTo(User, {foreignKey: 'orgId', as: 'organizer'});
+
 // Initialize database
 async function setupDatabase() { 
     try { 
