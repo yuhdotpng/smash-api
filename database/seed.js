@@ -37,11 +37,17 @@ async function seedDatabase() {
                 email: 'marcus@example.com',
                 password: hashedPassword,
                 role: 'player'
+            },
+            {
+                username: 'test_TO',
+                email: 'TO@example.com',
+                password: hashedPassword,
+                role: 'TO'
             }
         ]);
 
         // Create sample players
-        await Player.bulkCreate([
+       const players =  await Player.bulkCreate([
             // Assigned Player profiles
             {
                 name: 'MasterofChar',
@@ -53,18 +59,18 @@ async function seedDatabase() {
                 active_status: false
             },
             {
-               name: 'Char2',
+               name: 'yuhdotpng',
                conference: 'KC',
-               main: 'Zelda',
+               main: 'Joker',
                previous_rankings: [2,6,2,3,7],
                season_ranking: 15,
-               userId: users[0].id,
+               userId: users[3].id,
                active_status: true
             }
         ]);
 
         //Creat sample tournaments
-        await Tournament.bulkCreate([
+        const tourneys = await Tournament.bulkCreate([
             //Assigned Tournaments
             {
                 name: 'Tourney 1',
@@ -73,7 +79,7 @@ async function seedDatabase() {
                 attending_players: ['Player1', 'Player2', 'Player3'],
                 game_played: 'ultimate',
                 format: 'single',
-                userId: users[2].id
+                orgId: users[2].id
             },
             {
                 name: 'Tourney 2',
@@ -82,7 +88,7 @@ async function seedDatabase() {
                 attending_players: ['PlayerA', 'PlayerB', 'PlayerC'],
                 game_played: 'melee',
                 format: 'single',
-                userId: users[3].id
+                orgId: users[4].id
             }
         ]);
 
