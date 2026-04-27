@@ -39,12 +39,14 @@ async function initializeDatabase() {
         await db.sync({ force: true });
         console.log('Database synchronized successfully.');
         
+        await db.close();
     } catch (error) {
         console.error('Unable to connect to database:', error);
     }
 }
-
+if (require.main === module) {
 initializeDatabase();
+}
 
 
 // Export for use in other files
