@@ -375,7 +375,11 @@ app.get('/api/players/:id', requireAuth, async (req, res) => {
 // GET /api/players/profile - Get single player
 app.get('/api/players/profile', requireAuth, async (req, res) => {
     try {
-        const player = await Player.findByPk(req.user.id, {
+        const player = await Player.findOne({ 
+            where : {
+                id: req.user.id
+            }
+        }, {
         
         });
 
@@ -430,7 +434,7 @@ app.put('/api/players/profile', requireAuth, requirePlayer, async (req, res) => 
         
         const player = await Player.findByPk(req.user.id,{
             where: { 
-                id: req.params.id,
+                id: req.user.id,
             }
         });
         
